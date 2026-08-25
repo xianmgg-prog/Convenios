@@ -16,6 +16,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # La respuesta alternativa se mantiene exactamente como solicita el requisito.
 NO_INFO_MESSAGE = "No encuentro esta información en el convenio subido"
+REGCON_SEARCH_URL = (
+    "https://expinterweb.mites.gob.es/regcon/pub/"
+    "buscadorTextosEstatal?language=es"
+)
 
 # El modelo solo recibe los fragmentos recuperados en la variable {context}.
 RAG_PROMPT = PromptTemplate(
@@ -117,6 +121,16 @@ def main() -> None:
             "Sube un convenio en PDF",
             type=["pdf"],
             accept_multiple_files=False,
+        )
+        st.divider()
+        st.subheader("Buscador de convenios")
+        st.caption(
+            "Encuentra el texto oficial en REGCON y vuelve aquí para subir el PDF."
+        )
+        st.link_button(
+            "Abrir buscador oficial REGCON ↗",
+            REGCON_SEARCH_URL,
+            use_container_width=True,
         )
 
     # Al elegir otro PDF se descarta el índice y el historial anteriores.
