@@ -98,26 +98,24 @@ def create_qa_chain(vectorstore: FAISS, gemini_api_key: str) -> RetrievalQA:
         return_source_documents=True,
     )
 
-def generar_word_baja(empresa, trabajador, dni, fecha, motivo):
-    """Genera un archivo Word en memoria según el tipo de baja"""
+def generar_word_it(empresa, trabajador, dni, fecha, contingencia):
+    """Genera un archivo Word para comunicar la situación de Incapacidad Temporal"""
     doc = Document()
-    doc.add_heading('COMUNICACIÓN DE CESE', 0)
+    doc.add_heading('COMUNICACIÓN DE SITUACIÓN DE INCAPACIDAD TEMPORAL (IT)', 0)
     doc.add_paragraph(f"Empresa: {empresa}")
     doc.add_paragraph(f"A la atención de D./Dña: {trabajador}")
     doc.add_paragraph(f"DNI/NIE: {dni}\n")
     
-    # Textos de ejemplo (puedes cambiarlos por vuestras plantillas reales)
-    if motivo == "Baja Voluntaria":
-        texto = f"Por la presente, la dirección de la empresa acusa recibo de su comunicación en la que nos informa de su decisión de causar baja voluntaria en la empresa con efectos del día {fecha}.\n\nAceptamos su decisión y le informamos que tiene a su disposición en nuestras oficinas su liquidación y finiquito."
-    elif motivo == "Fin de Contrato":
-        texto = f"Por la presente le comunicamos que, con fecha {fecha}, finalizará su contrato de trabajo por expiración del tiempo convenido, procediendo a su baja en la Seguridad Social.\n\nLe agradecemos los servicios prestados y le informamos que su liquidación estará a su disposición."
-    elif motivo == "No superación periodo de prueba":
-        texto = f"Por la presente le comunicamos la decisión de la empresa de dar por finalizada su relación laboral por no superación del periodo de prueba, con efectos del día {fecha}."
-    else:
-        texto = f"Se le comunica que con fecha {fecha} se procede a su baja en la empresa por el siguiente motivo: {motivo}."
+    texto = f"Mediante el presente documento, la dirección de la empresa deja constancia de su situación de baja médica por {contingencia}, con fecha de inicio {fecha}."
+    
+    texto += "\n\nLe recordamos que, de acuerdo con la normativa vigente (Real Decreto 1060/2022), ya no es necesario que nos entregue la copia en papel del parte médico, dado que la información nos es remitida telemáticamente por el INSS a través del sistema FIE."
+    
+    texto += "\n\nDurante el periodo que dure su baja médica, su nómina se calculará aplicando las prestaciones legales de la Seguridad Social correspondientes y, en su caso, los complementos de Incapacidad Temporal que establezca su Convenio Colectivo de aplicación."
+    
+    texto += "\n\nLe deseamos una pronta recuperación."
         
     doc.add_paragraph(texto)
-    doc.add_paragraph("\n\n\nFdo. La Empresa                                   Fdo. El Trabajador (Recibí)")
+    doc.add_paragraph("\n\n\nFdo. La Empresa")
     
     # Guardar en memoria
     bio = io.BytesIO()
@@ -185,7 +183,7 @@ def main() -> None:
         st.link_button("🌐 Buscar en REGCON ↗", REGCON_SEARCH_URL, use_container_width=True)
 
     # --- PESTAÑAS PRINCIPALES ---
-    tab1, tab2 = st.tabs(["📚 Asistente de Convenios (Chat RAG)", "📝 Generador de Plantillas (Bajas)"])
+    tab1, tab2 = st.tabs(["📚 Asistente de Convenios (Chat RAG)", "🏥 Generador de Bajas (IT)"])
 
     # --- PESTAÑA 1: CHAT CONVENIOS ---
     with tab1:
@@ -231,41 +229,45 @@ def main() -> None:
 
             st.session_state.messages.append({"role": "assistant", "content": answer})
 
-    # --- PESTAÑA 2: GENERADOR DE BAJAS ---
+    # --- PESTAÑA 2: GENERADOR DE BAJAS MEDICAS ---
     with tab2:
-        st.subheader("Generador rápido de comunicaciones")
-        st.write("Rellena los datos y descarga la carta de baja o fin de contrato en formato Word (lista para firmar).")
+        st.subheader("Documento de Comunicación de IT")
+        st.write("Genera una carta informativa para el trabajador sobre su situación de incapacidad temporal y complementos.")
         
-        with st.form("form_bajas"):
+        with st.form("form_it"):
             colA, colB = st.columns(2)
             with colA:
                 input_empresa = st.text_input("Razón Social de la Empresa")
                 input_trabajador = st.text_input("Nombre y Apellidos del Trabajador")
                 input_dni = st.text_input("DNI / NIE")
             with colB:
-                input_fecha = st.date_input("Fecha de Efecto", format="DD/MM/YYYY")
-                # Formatear la fecha para el documento
+                input_fecha = st.date_input("Fecha de Inicio de la Baja", format="DD/MM/YYYY")
                 fecha_str = input_fecha.strftime("%d/%m/%Y")
                 input_motivo = st.selectbox(
-                    "Motivo de la Baja", 
-                    ["Baja Voluntaria", "Fin de Contrato", "No superación periodo de prueba"]
+                    "Tipo de Contingencia", 
+                    [
+                        "Enfermedad Común", 
+                        "Accidente de Trabajo", 
+                        "Accidente No Laboral", 
+                        "Enfermedad Profesional",
+                        "Riesgo durante el embarazo"
+                    ]
                 )
             
-            btn_generar = st.form_submit_button("Redactar Documento", use_container_width=True)
+            btn_generar = st.form_submit_button("Generar Documento de Baja Médica", use_container_width=True)
             
         if btn_generar:
             if not input_empresa or not input_trabajador or not input_dni:
                 st.error("Por favor, rellena todos los datos del formulario.")
             else:
-                # Llama a la función que crea el Word
-                word_file = generar_word_baja(input_empresa, input_trabajador, input_dni, fecha_str, input_motivo)
+                # Llama a la función que crea el Word de IT
+                word_file = generar_word_it(input_empresa, input_trabajador, input_dni, fecha_str, input_motivo)
                 st.success("¡Documento generado con éxito!")
                 
-                # Botón nativo de Streamlit para descargar
                 st.download_button(
-                    label="⬇️ Descargar Word (.docx)",
+                    label="⬇️ Descargar Comunicación IT (.docx)",
                     data=word_file,
-                    file_name=f"Comunicacion_Baja_{input_trabajador.replace(' ', '_')}.docx",
+                    file_name=f"Baja_Medica_{input_trabajador.replace(' ', '_')}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     use_container_width=True
                 )
