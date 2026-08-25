@@ -31,6 +31,8 @@ RAG_PROMPT = PromptTemplate(
 
 Responde la pregunta usando ÚNICAMENTE la información incluida en el contexto.
 No uses conocimientos externos, no supongas datos, no completes lagunas y no inventes.
+Si la pregunta es sobre categorías, grupos profesionales o salarios, revisa las
+tablas incluidas en el contexto y enumera literalmente las filas recuperadas.
 Si el contexto no contiene una respuesta clara y suficiente, responde exactamente:
 {NO_INFO_MESSAGE}
 
@@ -109,8 +111,13 @@ def create_qa_chain(vectorstore: FAISS, gemini_api_key: str) -> RetrievalQA:
     return RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=vectorstore.as_retriever(search_kwargs={"k": 4}),
+        # MMR aporta fragmentos diversos, útil para anexos y tablas salariales.
+        retriever=vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={"k": 8, "fetch_k": 30, "lambda_mult": 0.65},
+        ),
         chain_type_kwargs={"prompt": RAG_PROMPT},
+        return_source_documents=True,
     )
 
 
@@ -186,6 +193,15 @@ def main() -> None:
                     response = qa_chain.invoke({"query": question})
                     answer = response["result"]
                 st.markdown(answer)
+                source_pages = sorted(
+                    {
+                        document.metadata.get("page", 0) + 1
+                        for document in response.get("source_documents", [])
+                    }
+                )
+                if source_pages:
+                    pages = ", ".join(str(page) for page in source_pages)
+                    st.caption(f"Fragmentos consultados: páginas {pages}")
             except Exception as error:
                 answer = f"No se ha podido obtener una respuesta: {error}"
                 st.error(answer)
