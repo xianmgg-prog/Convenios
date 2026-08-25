@@ -4,37 +4,30 @@ import os
 import tempfile
 
 import streamlit as st
-# RetrievalQA es una cadena "classic". Desde LangChain 1.x ya no vive en
-# ``langchain.chains``; el paquete de compatibilidad conserva esta API estable.
 from langchain_classic.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
-from langchain_google_genai import (
-    ChatGoogleGenerativeAI,
-)
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-
-# La respuesta alternativa se mantiene exactamente como solicita el requisito.
+# Mensajes y URLs
 NO_INFO_MESSAGE = "No encuentro esta información en el convenio subido"
-REGCON_SEARCH_URL = (
-    "https://expinterweb.mites.gob.es/regcon/pub/"
-    "buscadorTextosEstatal?language=es"
-)
+REGCON_SEARCH_URL = "https://expinterweb.mites.gob.es/regcon/pub/buscadorTextosEstatal?language=es"
 
-# El modelo solo recibe los fragmentos recuperados en la variable {context}.
+# Prompt actualizado para que razone y entienda preguntas generales
 RAG_PROMPT = PromptTemplate(
     input_variables=["context", "question"],
-    template=f"""Eres un graduado social experto que asesora sobre convenios colectivos.
+    template=f"""Eres un graduado social experto en convenios colectivos.
 
-Responde la pregunta usando ÚNICAMENTE la información incluida en el contexto.
-No uses conocimientos externos, no supongas datos, no completes lagunas y no inventes.
-Si la pregunta es sobre categorías, grupos profesionales o salarios, revisa las
-tablas incluidas en el contexto y enumera literalmente las filas recuperadas.
-Si el contexto no contiene una respuesta clara y suficiente, responde exactamente:
-{NO_INFO_MESSAGE}
+Lee el siguiente contexto del convenio y responde a la pregunta del usuario.
+Normas:
+1. Basa tu respuesta ÚNICAMENTE en el contexto proporcionado.
+2. Puedes resumir, agrupar información o explicarla con palabras sencillas, pero no inventes datos ni salarios que no aparezcan.
+3. Si la pregunta es muy general (ej. "vacaciones"), haz un resumen de todo lo que encuentres en el contexto sobre ese tema.
+4. Si la pregunta es sobre categorías, grupos profesionales o salarios, revisa las tablas incluidas en el contexto y enumera literalmente las filas recuperadas.
+5. Si definitivamente el contexto no habla de lo que pide el usuario, responde exactamente: {NO_INFO_MESSAGE}
 
 Contexto del convenio:
 {{context}}
@@ -44,13 +37,11 @@ Pregunta: {{question}}
 Respuesta:""",
 )
 
-
 def reset_document_state() -> None:
     """Elimina el índice y la conversación asociados al PDF anterior."""
     st.session_state.vectorstore = None
     st.session_state.pdf_name = None
     st.session_state.messages = []
-
 
 def initialise_session_state() -> None:
     """Crea las variables de sesión necesarias la primera vez que se carga la app."""
@@ -61,7 +52,6 @@ def initialise_session_state() -> None:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-
 @st.cache_resource(show_spinner=False)
 def get_local_embeddings() -> HuggingFaceEmbeddings:
     """Carga una vez el modelo multilingüe que vectoriza el PDF localmente."""
@@ -71,10 +61,8 @@ def get_local_embeddings() -> HuggingFaceEmbeddings:
         encode_kwargs={"normalize_embeddings": True},
     )
 
-
 def build_vectorstore(uploaded_pdf) -> FAISS:
     """Extrae el PDF, lo divide en fragmentos y devuelve un índice FAISS en memoria."""
-    # NamedTemporaryFile con delete=False permite que PyPDFLoader abra el archivo en Windows.
     temp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
@@ -93,33 +81,31 @@ def build_vectorstore(uploaded_pdf) -> FAISS:
         if not chunks:
             raise ValueError("No se han podido crear fragmentos a partir del PDF.")
 
-        # Esta operación es local: no consume cuota de la API de Gemini.
+        # Vectorización local
         embeddings = get_local_embeddings()
         return FAISS.from_documents(chunks, embeddings)
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
 
-
 def create_qa_chain(vectorstore: FAISS, gemini_api_key: str) -> RetrievalQA:
     """Crea la cadena RAG con la API clásica y compatible de RetrievalQA."""
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3.6-flash",
+        model="gemini-1.5-flash",
         temperature=0,
         api_key=gemini_api_key,
     )
     return RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        # MMR aporta fragmentos diversos, útil para anexos y tablas salariales.
+        # Búsqueda por similitud pura recuperando más contexto (15 fragmentos)
         retriever=vectorstore.as_retriever(
-            search_type="mmr",
-            search_kwargs={"k": 8, "fetch_k": 30, "lambda_mult": 0.65},
+            search_type="similarity",
+            search_kwargs={"k": 15},
         ),
         chain_type_kwargs={"prompt": RAG_PROMPT},
         return_source_documents=True,
     )
-
 
 def apply_custom_style() -> None:
     """Aplica una presentación visual cuidada sin dejar de usar Streamlit."""
@@ -272,7 +258,6 @@ def apply_custom_style() -> None:
         unsafe_allow_html=True,
     )
 
-
 def main() -> None:
     st.set_page_config(
         page_title="Consulta de convenios",
@@ -325,7 +310,6 @@ def main() -> None:
         )
         st.caption("El PDF se vectoriza localmente; Gemini solo responde al chat.")
 
-    # Al elegir otro PDF se descarta el índice y el historial anteriores.
     if uploaded_pdf and uploaded_pdf.name != st.session_state.pdf_name:
         reset_document_state()
 
@@ -362,7 +346,6 @@ def main() -> None:
                         st.session_state.vectorstore,
                         gemini_api_key,
                     )
-                    # El nombre de entrada de RetrievalQA es "query".
                     response = qa_chain.invoke({"query": question})
                     answer = response["result"]
                 st.markdown(answer)
@@ -380,7 +363,6 @@ def main() -> None:
                 st.error(answer)
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
-
 
 if __name__ == "__main__":
     main()
