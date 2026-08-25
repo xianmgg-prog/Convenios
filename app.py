@@ -12,8 +12,8 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import (
     ChatGoogleGenerativeAI,
-    GoogleGenerativeAIEmbeddings,
 )
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
@@ -60,7 +60,17 @@ def initialise_session_state() -> None:
         st.session_state.messages = []
 
 
-def build_vectorstore(uploaded_pdf, gemini_api_key: str) -> FAISS:
+@st.cache_resource(show_spinner=False)
+def get_local_embeddings() -> HuggingFaceEmbeddings:
+    """Carga una vez el modelo multilingüe que vectoriza el PDF localmente."""
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True},
+    )
+
+
+def build_vectorstore(uploaded_pdf) -> FAISS:
     """Extrae el PDF, lo divide en fragmentos y devuelve un índice FAISS en memoria."""
     # NamedTemporaryFile con delete=False permite que PyPDFLoader abra el archivo en Windows.
     temp_path = None
@@ -81,11 +91,8 @@ def build_vectorstore(uploaded_pdf, gemini_api_key: str) -> FAISS:
         if not chunks:
             raise ValueError("No se han podido crear fragmentos a partir del PDF.")
 
-        # Los embeddings y el chat usan la misma clave de Gemini.
-        embeddings = GoogleGenerativeAIEmbeddings(
-            model="gemini-embedding-2-preview",
-            api_key=gemini_api_key,
-        )
+        # Esta operación es local: no consume cuota de la API de Gemini.
+        embeddings = get_local_embeddings()
         return FAISS.from_documents(chunks, embeddings)
     finally:
         if temp_path and os.path.exists(temp_path):
@@ -136,25 +143,20 @@ def main() -> None:
             REGCON_SEARCH_URL,
             use_container_width=True,
         )
+        st.caption("El PDF se vectoriza localmente; Gemini solo responde al chat.")
 
     # Al elegir otro PDF se descarta el índice y el historial anteriores.
     if uploaded_pdf and uploaded_pdf.name != st.session_state.pdf_name:
         reset_document_state()
 
     if uploaded_pdf and st.session_state.vectorstore is None:
-        if not gemini_api_key:
-            st.info("Introduce tu API Key de Gemini para procesar el convenio.")
-        else:
-            try:
-                with st.spinner("Leyendo y preparando el convenio..."):
-                    st.session_state.vectorstore = build_vectorstore(
-                        uploaded_pdf,
-                        gemini_api_key,
-                    )
-                    st.session_state.pdf_name = uploaded_pdf.name
-                st.success(f"Convenio preparado: {uploaded_pdf.name}")
-            except Exception as error:
-                st.error(f"No se ha podido procesar el PDF: {error}")
+        try:
+            with st.spinner("Leyendo y preparando el convenio..."):
+                st.session_state.vectorstore = build_vectorstore(uploaded_pdf)
+                st.session_state.pdf_name = uploaded_pdf.name
+            st.success(f"Convenio preparado: {uploaded_pdf.name}")
+        except Exception as error:
+            st.error(f"No se ha podido procesar el PDF: {error}")
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -162,8 +164,11 @@ def main() -> None:
 
     question = st.chat_input(
         "Pregunta sobre el convenio",
-        disabled=st.session_state.vectorstore is None,
+        disabled=st.session_state.vectorstore is None or not gemini_api_key,
     )
+
+    if st.session_state.vectorstore is not None and not gemini_api_key:
+        st.info("Introduce tu API Key de Gemini para hacer preguntas al convenio.")
 
     if question:
         st.session_state.messages.append({"role": "user", "content": question})
