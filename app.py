@@ -91,7 +91,7 @@ def build_vectorstore(uploaded_pdf) -> FAISS:
 def create_qa_chain(vectorstore: FAISS, gemini_api_key: str) -> RetrievalQA:
     """Crea la cadena RAG con la API clásica y compatible de RetrievalQA."""
     llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-latest", # <-- CORREGIDO AQUÍ
+        model="gemini-pro", # <--- CAMBIADO A LA VERSIÓN UNIVERSAL MÁS ESTABLE
         temperature=0,
         api_key=gemini_api_key,
     )
