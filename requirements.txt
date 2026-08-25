@@ -1,9 +1,8 @@
 streamlit
-langchain
-langchain-openai
 langchain-classic
 langchain-google-genai
+langchain-huggingface
 langchain-community
 pypdf
 faiss-cpu
-tiktoken
+sentence-transformers
