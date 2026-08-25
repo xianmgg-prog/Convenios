@@ -15,6 +15,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Mensajes y URLs
 NO_INFO_MESSAGE = "No encuentro esta información en el convenio subido"
+REGCON_SEARCH_URL = "https://expinterweb.mites.gob.es/regcon/pub/buscadorTextosEstatal?language=es"
 
 # Prompt actualizado para que razone y entienda preguntas generales
 RAG_PROMPT = PromptTemplate(
@@ -175,19 +176,18 @@ def main() -> None:
             help="Crea una clave en Google AI Studio. Se usa solo durante esta sesión.",
         )
         
-        # --- NUEVO BUSCADOR INTERNO DE CONVENIOS ---
+        # --- BUSCADOR INTERNO DE CONVENIOS ---
         st.divider()
         st.subheader("🔍 Buscador Rápido")
-        st.caption("Encuentra el PDF y súbelo abajo:")
+        st.caption("Descarga tus convenios frecuentes:")
         
-        # Diccionario con tus convenios (puedes añadir o quitar filas aquí)
         datos_convenios = {
             "Sector": ["Hostelería", "Metal", "Oficinas y Despachos"],
             "Provincia": ["Ourense", "Estatal", "Madrid"],
             "Enlace": [
-                "https://www.boe.es/boe/dias/2021/11/17/pdfs/BOE-A-2021-18894.pdf", # Pon aquí el link real de Ourense
-                "https://www.boe.es/boe/dias/2022/01/12/pdfs/BOE-A-2022-478.pdf",  # Link real del Metal
-                "https://www.boe.es/boe/dias/2023/12/28/pdfs/BOE-A-2023-26462.pdf" # Link real Oficinas
+                "https://www.boe.es/boe/dias/2021/11/17/pdfs/BOE-A-2021-18894.pdf",
+                "https://www.boe.es/boe/dias/2022/01/12/pdfs/BOE-A-2022-478.pdf", 
+                "https://www.boe.es/boe/dias/2023/12/28/pdfs/BOE-A-2023-26462.pdf" 
             ]
         }
         df_convenios = pd.DataFrame(datos_convenios)
@@ -202,6 +202,17 @@ def main() -> None:
         if not resultado.empty:
             link_descarga = resultado.iloc[0]["Enlace"]
             st.link_button("⬇️ Descargar PDF Oficial", link_descarga, use_container_width=True)
+        # -------------------------------------------
+
+        # --- BUSCADOR OFICIAL REGCON ---
+        st.divider()
+        st.subheader("🌐 Buscador Oficial")
+        st.caption("Si el convenio no está arriba, búscalo aquí:")
+        st.link_button(
+            "Abrir REGCON ↗",
+            REGCON_SEARCH_URL,
+            use_container_width=True,
+        )
         # -------------------------------------------
 
         st.divider()
