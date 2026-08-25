@@ -121,15 +121,188 @@ def create_qa_chain(vectorstore: FAISS, gemini_api_key: str) -> RetrievalQA:
     )
 
 
-def main() -> None:
-    st.set_page_config(page_title="Consulta de convenios", page_icon="📄")
-    initialise_session_state()
+def apply_custom_style() -> None:
+    """Aplica una presentación visual cuidada sin dejar de usar Streamlit."""
+    st.markdown(
+        """
+        <style>
+            :root {
+                --ink: #172033;
+                --muted: #64748b;
+                --surface: #ffffff;
+                --line: #dbe4ef;
+                --navy: #153b6d;
+                --blue: #2563eb;
+                --sky: #eef6ff;
+                --mint: #eaf8f1;
+            }
 
-    st.title("📄 Consulta tu convenio colectivo")
-    st.caption("Las respuestas se basan exclusivamente en el PDF subido.")
+            .stApp {
+                background:
+                    radial-gradient(circle at 88% 4%, #dceeff 0, transparent 26rem),
+                    linear-gradient(180deg, #f8fbff 0%, #f2f6fb 100%);
+                color: var(--ink);
+            }
+
+            .block-container {
+                max-width: 1080px;
+                padding-top: 2rem;
+                padding-bottom: 3rem;
+            }
+
+            section[data-testid="stSidebar"] {
+                background: linear-gradient(180deg, #102f57 0%, #153b6d 100%);
+            }
+
+            section[data-testid="stSidebar"] * {
+                color: #f8fbff;
+            }
+
+            section[data-testid="stSidebar"] input {
+                background: rgba(255, 255, 255, 0.96) !important;
+                color: var(--ink) !important;
+                border-radius: 10px !important;
+            }
+
+            section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+                background: rgba(255, 255, 255, 0.10);
+                border: 1px dashed rgba(255, 255, 255, 0.55);
+                border-radius: 14px;
+            }
+
+            .sidebar-brand {
+                padding: 0.25rem 0 0.8rem;
+            }
+
+            .sidebar-brand__eyebrow {
+                color: #9fc6ff !important;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.11em;
+                text-transform: uppercase;
+            }
+
+            .sidebar-brand h2 {
+                color: #ffffff !important;
+                font-size: 1.32rem;
+                margin: 0.22rem 0 0;
+            }
+
+            .app-hero {
+                background: linear-gradient(135deg, #ffffff 0%, #edf6ff 100%);
+                border: 1px solid rgba(37, 99, 235, 0.14);
+                border-radius: 22px;
+                box-shadow: 0 12px 34px rgba(15, 47, 87, 0.08);
+                margin-bottom: 1.5rem;
+                overflow: hidden;
+                padding: 2.1rem 2.3rem;
+                position: relative;
+            }
+
+            .app-hero::after {
+                background: #69a6ee;
+                border-radius: 999px;
+                content: "";
+                height: 13rem;
+                opacity: 0.14;
+                position: absolute;
+                right: -4rem;
+                top: -7rem;
+                width: 13rem;
+            }
+
+            .app-hero__eyebrow {
+                color: var(--blue);
+                font-size: 0.76rem;
+                font-weight: 800;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+            }
+
+            .app-hero h1 {
+                color: var(--ink);
+                font-size: clamp(1.8rem, 4vw, 2.55rem);
+                letter-spacing: -0.045em;
+                line-height: 1.08;
+                margin: 0.4rem 0 0.55rem;
+            }
+
+            .app-hero p {
+                color: var(--muted);
+                font-size: 1.02rem;
+                margin: 0;
+                max-width: 43rem;
+            }
+
+            [data-testid="stChatMessage"] {
+                background: rgba(255, 255, 255, 0.82);
+                border: 1px solid var(--line);
+                border-radius: 16px;
+                box-shadow: 0 5px 17px rgba(15, 47, 87, 0.045);
+                margin: 0.72rem 0;
+                padding: 0.35rem 0.65rem;
+            }
+
+            [data-testid="stChatInput"] {
+                background: var(--surface);
+                border: 1px solid #c7d8ec;
+                border-radius: 15px;
+                box-shadow: 0 8px 24px rgba(15, 47, 87, 0.07);
+            }
+
+            [data-testid="stChatInput"]:focus-within {
+                border-color: #5790dd;
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+            }
+
+            [data-testid="stBaseButton-secondary"] {
+                border-radius: 10px;
+            }
+
+            [data-testid="stAlert"] {
+                border-radius: 12px;
+            }
+
+            @media (max-width: 640px) {
+                .block-container { padding-top: 1rem; }
+                .app-hero { border-radius: 17px; padding: 1.55rem; }
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def main() -> None:
+    st.set_page_config(
+        page_title="Consulta de convenios",
+        page_icon="📄",
+        layout="wide",
+    )
+    initialise_session_state()
+    apply_custom_style()
+
+    st.markdown(
+        """
+        <section class="app-hero">
+            <div class="app-hero__eyebrow">Asistente laboral · RAG seguro</div>
+            <h1>Consulta tu convenio colectivo</h1>
+            <p>Sube un PDF y obtén respuestas basadas exclusivamente en su contenido.</p>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
 
     with st.sidebar:
-        st.header("Configuración")
+        st.markdown(
+            """
+            <div class="sidebar-brand">
+                <div class="sidebar-brand__eyebrow">Área laboral</div>
+                <h2>Configuración</h2>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         gemini_api_key = st.text_input(
             "API Key de Gemini",
             type="password",
