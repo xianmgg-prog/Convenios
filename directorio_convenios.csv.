@@ -1,0 +1,32 @@
+import streamlit as st
+import pandas as pd
+
+# Suponiendo que tienes un archivo CSV con tus convenios
+# df = pd.read_csv("directorio_convenios.csv")
+
+# Datos de ejemplo para que veas cómo funciona
+datos = {
+    "Sector": ["Hostelería", "Metal", "Oficinas y Despachos"],
+    "Provincia": ["Ourense", "Madrid", "Estatal"],
+    "Enlace": ["https://ejemplo.com/ourense.pdf", "https://ejemplo.com/madrid.pdf", "https://ejemplo.com/estatal.pdf"]
+}
+df = pd.DataFrame(datos)
+
+st.subheader("Buscador Interno de Convenios")
+
+# Desplegables para filtrar
+col1, col2 = st.columns(2)
+with col1:
+    sector_elegido = st.selectbox("Selecciona el Sector:", df["Sector"].unique())
+with col2:
+    # Filtramos las provincias disponibles para ese sector
+    provincias_disponibles = df[df["Sector"] == sector_elegido]["Provincia"].unique()
+    provincia_elegida = st.selectbox("Provincia/Ámbito:", provincias_disponibles)
+
+# Buscar el link exacto
+resultado = df[(df["Sector"] == sector_elegido) & (df["Provincia"] == provincia_elegida)]
+
+if not resultado.empty:
+    link = resultado.iloc[0]["Enlace"]
+    st.success("¡Convenio encontrado!")
+    st.link_button("Descargar PDF Oficial ⬇️", link)
