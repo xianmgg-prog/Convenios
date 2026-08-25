@@ -4,6 +4,7 @@ import os
 import tempfile
 
 import streamlit as st
+import pandas as pd
 from langchain_classic.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader
@@ -14,7 +15,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Mensajes y URLs
 NO_INFO_MESSAGE = "No encuentro esta información en el convenio subido"
-REGCON_SEARCH_URL = "https://expinterweb.mites.gob.es/regcon/pub/buscadorTextosEstatal?language=es"
 
 # Prompt actualizado para que razone y entienda preguntas generales
 RAG_PROMPT = PromptTemplate(
@@ -91,14 +91,13 @@ def build_vectorstore(uploaded_pdf) -> FAISS:
 def create_qa_chain(vectorstore: FAISS, gemini_api_key: str) -> RetrievalQA:
     """Crea la cadena RAG con la API clásica y compatible de RetrievalQA."""
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3.6-flash", # <--- CAMBIADO EXACTAMENTE A gemini-3.6-flash
+        model="gemini-3.6-flash", 
         temperature=0,
         api_key=gemini_api_key,
     )
     return RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        # Búsqueda por similitud pura recuperando más contexto (15 fragmentos)
         retriever=vectorstore.as_retriever(
             search_type="similarity",
             search_kwargs={"k": 15},
@@ -122,148 +121,30 @@ def apply_custom_style() -> None:
                 --sky: #eef6ff;
                 --mint: #eaf8f1;
             }
-
             .stApp {
-                background:
-                    radial-gradient(circle at 88% 4%, #dceeff 0, transparent 26rem),
-                    linear-gradient(180deg, #f8fbff 0%, #f2f6fb 100%);
+                background: radial-gradient(circle at 88% 4%, #dceeff 0, transparent 26rem), linear-gradient(180deg, #f8fbff 0%, #f2f6fb 100%);
                 color: var(--ink);
             }
-
-            .block-container {
-                max-width: 1080px;
-                padding-top: 2rem;
-                padding-bottom: 3rem;
-            }
-
-            section[data-testid="stSidebar"] {
-                background: linear-gradient(180deg, #102f57 0%, #153b6d 100%);
-            }
-
-            section[data-testid="stSidebar"] * {
-                color: #f8fbff;
-            }
-
-            section[data-testid="stSidebar"] input {
-                background: rgba(255, 255, 255, 0.96) !important;
-                color: var(--ink) !important;
-                border-radius: 10px !important;
-            }
-
-            section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
-                background: rgba(255, 255, 255, 0.10);
-                border: 1px dashed rgba(255, 255, 255, 0.55);
-                border-radius: 14px;
-            }
-
-            .sidebar-brand {
-                padding: 0.25rem 0 0.8rem;
-            }
-
-            .sidebar-brand__eyebrow {
-                color: #9fc6ff !important;
-                font-size: 0.72rem;
-                font-weight: 700;
-                letter-spacing: 0.11em;
-                text-transform: uppercase;
-            }
-
-            .sidebar-brand h2 {
-                color: #ffffff !important;
-                font-size: 1.32rem;
-                margin: 0.22rem 0 0;
-            }
-
-            .app-hero {
-                background: linear-gradient(135deg, #ffffff 0%, #edf6ff 100%);
-                border: 1px solid rgba(37, 99, 235, 0.14);
-                border-radius: 22px;
-                box-shadow: 0 12px 34px rgba(15, 47, 87, 0.08);
-                margin-bottom: 1.5rem;
-                overflow: hidden;
-                padding: 2.1rem 2.3rem;
-                position: relative;
-            }
-
-            .app-hero::after {
-                background: #69a6ee;
-                border-radius: 999px;
-                content: "";
-                height: 13rem;
-                opacity: 0.14;
-                position: absolute;
-                right: -4rem;
-                top: -7rem;
-                width: 13rem;
-            }
-
-            .app-hero__eyebrow {
-                color: var(--blue);
-                font-size: 0.76rem;
-                font-weight: 800;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
-            }
-
-            .app-hero h1 {
-                color: var(--ink);
-                font-size: clamp(1.8rem, 4vw, 2.55rem);
-                letter-spacing: -0.045em;
-                line-height: 1.08;
-                margin: 0.4rem 0 0.55rem;
-            }
-
-            .app-hero p {
-                color: var(--muted);
-                font-size: 1.02rem;
-                margin: 0;
-                max-width: 43rem;
-            }
-
-            [data-testid="stChatMessage"] {
-                background: rgba(255, 255, 255, 0.82);
-                border: 1px solid var(--line);
-                border-radius: 16px;
-                box-shadow: 0 5px 17px rgba(15, 47, 87, 0.045);
-                margin: 0.72rem 0;
-                padding: 0.35rem 0.65rem;
-            }
-
-            [data-testid="stChatInput"] {
-                background: var(--surface);
-                border: 1px solid #c7d8ec;
-                border-radius: 15px;
-                box-shadow: 0 8px 24px rgba(15, 47, 87, 0.07);
-            }
-
-            [data-testid="stChatInput"]:focus-within {
-                border-color: #5790dd;
-                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-            }
-
-            [data-testid="stBaseButton-secondary"] {
-                border-radius: 10px;
-            }
-
-            [data-testid="stAlert"] {
-                border-radius: 12px;
-            }
-
-            @media (max-width: 640px) {
-                .block-container { padding-top: 1rem; }
-                .app-hero { border-radius: 17px; padding: 1.55rem; }
-            }
+            .block-container { max-width: 1080px; padding-top: 2rem; padding-bottom: 3rem; }
+            section[data-testid="stSidebar"] { background: linear-gradient(180deg, #102f57 0%, #153b6d 100%); }
+            section[data-testid="stSidebar"] * { color: #f8fbff; }
+            section[data-testid="stSidebar"] input, section[data-testid="stSidebar"] select { background: rgba(255, 255, 255, 0.96) !important; color: var(--ink) !important; border-radius: 10px !important; }
+            section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background: rgba(255, 255, 255, 0.10); border: 1px dashed rgba(255, 255, 255, 0.55); border-radius: 14px; }
+            .sidebar-brand { padding: 0.25rem 0 0.8rem; }
+            .sidebar-brand__eyebrow { color: #9fc6ff !important; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; }
+            .sidebar-brand h2 { color: #ffffff !important; font-size: 1.32rem; margin: 0.22rem 0 0; }
+            .app-hero { background: linear-gradient(135deg, #ffffff 0%, #edf6ff 100%); border: 1px solid rgba(37, 99, 235, 0.14); border-radius: 22px; box-shadow: 0 12px 34px rgba(15, 47, 87, 0.08); margin-bottom: 1.5rem; overflow: hidden; padding: 2.1rem 2.3rem; position: relative; }
+            .app-hero h1 { color: var(--ink); font-size: clamp(1.8rem, 4vw, 2.55rem); margin: 0.4rem 0 0.55rem; }
+            .app-hero p { color: var(--muted); font-size: 1.02rem; margin: 0; }
+            [data-testid="stChatMessage"] { background: rgba(255, 255, 255, 0.82); border: 1px solid var(--line); border-radius: 16px; margin: 0.72rem 0; padding: 0.35rem 0.65rem; }
+            [data-testid="stChatInput"] { background: var(--surface); border-radius: 15px; }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
 def main() -> None:
-    st.set_page_config(
-        page_title="Consulta de convenios",
-        page_icon="📄",
-        layout="wide",
-    )
+    st.set_page_config(page_title="Consulta de convenios", page_icon="📄", layout="wide")
     initialise_session_state()
     apply_custom_style()
 
@@ -293,20 +174,41 @@ def main() -> None:
             type="password",
             help="Crea una clave en Google AI Studio. Se usa solo durante esta sesión.",
         )
+        
+        # --- NUEVO BUSCADOR INTERNO DE CONVENIOS ---
+        st.divider()
+        st.subheader("🔍 Buscador Rápido")
+        st.caption("Encuentra el PDF y súbelo abajo:")
+        
+        # Diccionario con tus convenios (puedes añadir o quitar filas aquí)
+        datos_convenios = {
+            "Sector": ["Hostelería", "Metal", "Oficinas y Despachos"],
+            "Provincia": ["Ourense", "Estatal", "Madrid"],
+            "Enlace": [
+                "https://www.boe.es/boe/dias/2021/11/17/pdfs/BOE-A-2021-18894.pdf", # Pon aquí el link real de Ourense
+                "https://www.boe.es/boe/dias/2022/01/12/pdfs/BOE-A-2022-478.pdf",  # Link real del Metal
+                "https://www.boe.es/boe/dias/2023/12/28/pdfs/BOE-A-2023-26462.pdf" # Link real Oficinas
+            ]
+        }
+        df_convenios = pd.DataFrame(datos_convenios)
+
+        sector_elegido = st.selectbox("1. Sector:", df_convenios["Sector"].unique())
+        
+        provincias_disponibles = df_convenios[df_convenios["Sector"] == sector_elegido]["Provincia"].unique()
+        provincia_elegida = st.selectbox("2. Provincia/Ámbito:", provincias_disponibles)
+        
+        resultado = df_convenios[(df_convenios["Sector"] == sector_elegido) & (df_convenios["Provincia"] == provincia_elegida)]
+        
+        if not resultado.empty:
+            link_descarga = resultado.iloc[0]["Enlace"]
+            st.link_button("⬇️ Descargar PDF Oficial", link_descarga, use_container_width=True)
+        # -------------------------------------------
+
+        st.divider()
         uploaded_pdf = st.file_uploader(
-            "Sube un convenio en PDF",
+            "Sube el convenio en PDF",
             type=["pdf"],
             accept_multiple_files=False,
-        )
-        st.divider()
-        st.subheader("Buscador de convenios")
-        st.caption(
-            "Encuentra el texto oficial en REGCON y vuelve aquí para subir el PDF."
-        )
-        st.link_button(
-            "Abrir buscador oficial REGCON ↗",
-            REGCON_SEARCH_URL,
-            use_container_width=True,
         )
         st.caption("El PDF se vectoriza localmente; Gemini solo responde al chat.")
 
