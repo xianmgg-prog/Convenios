@@ -10,7 +10,6 @@ from langchain_classic.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_google_genai import (
     ChatGoogleGenerativeAI,
     GoogleGenerativeAIEmbeddings,
@@ -61,7 +60,6 @@ def initialise_session_state() -> None:
         st.session_state.messages = []
 
 
-def build_vectorstore(uploaded_pdf, api_key: str) -> FAISS:
 def build_vectorstore(uploaded_pdf, gemini_api_key: str) -> FAISS:
     """Extrae el PDF, lo divide en fragmentos y devuelve un índice FAISS en memoria."""
     # NamedTemporaryFile con delete=False permite que PyPDFLoader abra el archivo en Windows.
@@ -84,9 +82,6 @@ def build_vectorstore(uploaded_pdf, gemini_api_key: str) -> FAISS:
             raise ValueError("No se han podido crear fragmentos a partir del PDF.")
 
         # Los embeddings y el chat usan la misma clave de Gemini.
-        embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-small",
-            api_key=api_key,
         embeddings = GoogleGenerativeAIEmbeddings(
             model="gemini-embedding-2-preview",
             api_key=gemini_api_key,
@@ -97,15 +92,11 @@ def build_vectorstore(uploaded_pdf, gemini_api_key: str) -> FAISS:
             os.remove(temp_path)
 
 
-def create_qa_chain(vectorstore: FAISS, api_key: str) -> RetrievalQA:
 def create_qa_chain(vectorstore: FAISS, gemini_api_key: str) -> RetrievalQA:
     """Crea la cadena RAG con la API clásica y compatible de RetrievalQA."""
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
         temperature=0,
-        api_key=api_key,
         api_key=gemini_api_key,
     )
     return RetrievalQA.from_chain_type(
@@ -125,12 +116,9 @@ def main() -> None:
 
     with st.sidebar:
         st.header("Configuración")
-        api_key = st.text_input(
-            "API Key de OpenAI",
         gemini_api_key = st.text_input(
             "API Key de Gemini",
             type="password",
-            help="La clave se usa solo durante esta sesión.",
             help="Crea una clave en Google AI Studio. Se usa solo durante esta sesión.",
         )
         uploaded_pdf = st.file_uploader(
@@ -154,14 +142,11 @@ def main() -> None:
         reset_document_state()
 
     if uploaded_pdf and st.session_state.vectorstore is None:
-        if not api_key:
-            st.info("Introduce tu API Key de OpenAI para procesar el convenio.")
         if not gemini_api_key:
             st.info("Introduce tu API Key de Gemini para procesar el convenio.")
         else:
             try:
                 with st.spinner("Leyendo y preparando el convenio..."):
-                    st.session_state.vectorstore = build_vectorstore(uploaded_pdf, api_key)
                     st.session_state.vectorstore = build_vectorstore(
                         uploaded_pdf,
                         gemini_api_key,
@@ -188,7 +173,6 @@ def main() -> None:
         with st.chat_message("assistant"):
             try:
                 with st.spinner("Buscando en el convenio..."):
-                    qa_chain = create_qa_chain(st.session_state.vectorstore, api_key)
                     qa_chain = create_qa_chain(
                         st.session_state.vectorstore,
                         gemini_api_key,
