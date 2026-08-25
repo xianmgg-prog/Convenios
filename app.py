@@ -4,8 +4,10 @@ import os
 import tempfile
 
 import streamlit as st
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+# RetrievalQA es una cadena "classic". Desde LangChain 1.x ya no vive en
+# ``langchain.chains``; el paquete de compatibilidad conserva esta API estable.
+from langchain_classic.chains import RetrievalQA
+from langchain_core.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
